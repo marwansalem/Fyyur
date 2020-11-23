@@ -137,6 +137,7 @@ def venues():
       "num_upcoming_shows": 0,
     }]
   }]
+  data = Venue.query.all()
   return render_template('pages/venues.html', areas=data);
 
 @app.route('/venues/search', methods=['POST'])
@@ -250,11 +251,7 @@ def create_venue_form():
 def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
-
-
   err = False
-
-
   try:
     venue = Venue()
     venue.name = request.form['name']
@@ -302,7 +299,13 @@ def create_venue_submission():
 def delete_venue(venue_id):
   # TODO: Complete this endpoint for taking a venue_id, and using
   # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
-
+  try:
+    venue_to_delete = Venue.query.get(venue_id)
+    db.session.delete(venue_to_delete)
+  except:
+    db.session.close()
+  finally:
+    db.session.close()
   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
   # clicking that button delete it from the db then redirect the user to the homepage
   return None
@@ -632,7 +635,18 @@ def shows():
     "start_time": "2035-04-15T20:00:00.000Z"
   }]
 
-  #shows = Show.query.all()
+  #shows = Venue.query.join(Artist).filter(venue_id)
+  #need to write a query to get the shows
+  joined = Venue.query.join(Show).all()
+  data =[]
+  #for v in joined:
+  #  d = {}
+  #  for a in  v.artists:
+  #    d['venue_id'] = v.id
+  #    d['venue_name'] = v.name
+
+      
+
   return render_template('pages/shows.html', shows=data)
 
 @app.route('/shows/create')

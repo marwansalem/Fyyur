@@ -666,7 +666,10 @@ def create_show_submission():
     artist_id = request.form['artist_id']
     start_time = request.form['start_time']
     #db.session.add()
-    #db.session.commit()
+    venue = Venue.query.get(venue_id)
+    artist = Artist.query.get(artist_id)
+    venue.artists.append[artist]
+    db.session.commit()
   except:
     err = True
     db.session.rollback()

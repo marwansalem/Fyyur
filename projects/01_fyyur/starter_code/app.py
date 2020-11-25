@@ -27,7 +27,7 @@ db = SQLAlchemy(app)
 
 # TODO: connect to a local postgresql database
 
-migrate = Migrate(app, db)
+migrate = Migrate(app, db, compare_type=True)
 
 #app.config['SQLALCHEMY_DATABASE_URI'] = app.config.getSQLALCHEMY_DATABASE_URI
 
@@ -39,14 +39,16 @@ migrate = Migrate(app, db)
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
 Show = db.Table('Show', \
-db.Column('artist', db.Integer, db.ForeignKey('Artist.id'), primary_key=True),\
-db.Column('venue', db.Integer, db.ForeignKey('Venue.id'), primary_key=True), \
+db.Column('id', db.Integer, primary_key=True), \
+db.Column('artist', db.Integer, db.ForeignKey('Artist.id'), nullable=False),\
+db.Column('venue', db.Integer, db.ForeignKey('Venue.id'), nullable=False), \
 db.Column('start_time', db.String))
 
 #changed start_time from a datetime column to string column so it can work with the included date filter
 
 class Venue(db.Model):
     __tablename__ = 'Venue'
+    # TODO change to  lower case
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
@@ -67,10 +69,14 @@ class Venue(db.Model):
 
 
     artists = db.relationship('Artist', secondary=Show, backref=db.backref('artists', lazy=True))
+    shows = db.relationship('Show', backref='shows', lazy=True)
+
+    #is this overkill too much relations among tables
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 class Artist(db.Model):
     __tablename__ = 'Artist'
+    #wanted to change to a lower case name
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
@@ -83,11 +89,8 @@ class Artist(db.Model):
     facebook_link = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean, default=False)
     seeking_description = db.Column(db.String())
+    shows = db.relationship('Show', backref='shows', lazy=True)
 
-    #genres = db.relationship
-
-#class Show(db.Model):
-#  __tablename= 'Show'
 
 # TODO: implement any missing fields, as a database migration using Flask-Migrate
 #----------------------------------------------------------------------------#
@@ -180,7 +183,7 @@ def create_venue_submission():
     venue.website = request.form['website']
 
     genres = request.form.getlist('genres')
-    venue.genres = genres
+    venue.genres = ','.join(genres)
   #if the checkbox is marked the request.form will have a 'seeking_talent' key with value = 'y' , otherwise there will be no key
     if request.form.get('seeking_talent', 'N') == 'y':
       venue.seeking_talent = True
@@ -369,7 +372,7 @@ def edit_artist_submission(artist_id):
       artist_to_edit.seeking_venue = False
     artist_to_edit.seeking_description = request.form['seeking_description']
     genres = request.form.getlist('genres')
-    artist_to_edit.genres = genres
+    artist_to_edit.genres = ','.join(genres)
     
     #do not have to add the edited artist to session or else it will create a record
     db.session.commit()
@@ -424,7 +427,7 @@ def edit_venue_submission(venue_id):
     venue.image_link = request.form['image_link']
     #venue.seeking_talent = request.form['seeking_talent']
     genres = request.form.getlist('genres')
-    venue.genres = genres
+    venue.genres = ','.join(genres)
     if request.form.get('seeking_talent', 'N') == 'y':
       venue.seeking_talent = True
     else:
@@ -475,7 +478,7 @@ def create_artist_submission():
     new_artist.seeking_description = request.form['seeking_description']
 
     genres = request.form.getlist('genres')
-    new_artist.genres = genres
+    new_artist.genres = ','.join(genres)
 
     db.session.add(new_artist)
     db.session.commit()

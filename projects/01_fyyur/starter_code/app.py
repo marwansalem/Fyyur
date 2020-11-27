@@ -15,6 +15,7 @@ from flask_wtf import Form
 from forms import *
 import config
 import sys
+import datetime
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -61,15 +62,16 @@ class Venue(db.Model):
     website = db.Column(db.String(120))
     seeking_talent = db.Column(db.Boolean, default=False)
     seeking_description = db.Column(db.String())
-    upcoming_shows_count = db.Column(db.Integer, default=0)
-    past_shows_count = db.Column(db.Integer, default=0)
+    #upcoming_shows_count = db.Column(db.Integer, default=0) 
+    # can be computed using a join no need to add a column
+    #past_shows_count = db.Column(db.Integer, default=0)
     genres = db.Column(db.String(120))
 
 
 
 
     artists = db.relationship('Artist', secondary=Show, backref=db.backref('artists', lazy=True))
-    shows = db.relationship('Show', backref='shows', lazy=True)
+    #shows = db.relationship('Show', backref='shows', lazy=True)
 
     #is this overkill too much relations among tables
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
@@ -89,7 +91,8 @@ class Artist(db.Model):
     facebook_link = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean, default=False)
     seeking_description = db.Column(db.String())
-    shows = db.relationship('Show', backref='shows', lazy=True)
+    #shows = db.relationship('Show', backref='shows', lazy=True)
+    #no need for shows column, you can get them using a join
 
 
 # TODO: implement any missing fields, as a database migration using Flask-Migrate
@@ -107,6 +110,19 @@ def format_datetime(value, format='medium'):
 
 app.jinja_env.filters['datetime'] = format_datetime
 
+
+# 
+def get_past_upcoming_shows(shows_list, format='%Y-%m-%d %H:%M:%S'):
+  now = datetime.now()
+  upcoming = []
+  past = []
+  for s in shows:
+    dt = datetime.strptime(s.start_time, format)
+    if dt < now:
+      past.append(s)
+    else:
+      upcoming.append(s)
+  return past, upcoming
 #----------------------------------------------------------------------------#
 # Controllers.
 #----------------------------------------------------------------------------#
@@ -150,7 +166,18 @@ def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
   try:
-    data = Venue.query.get(venue_id)
+    venue = Venue.query.get(venue_id)
+    shows = db.session.query(Show).filter_by(venue=venue_id).join(Venue).all()
+
+    data = venue.__dict__
+    past , upcoming = get_past_upcoming_shows(shows)
+    past_shows_count = len(past)
+    upcoming_shows_count = len(upcoming)
+    data['past_shows_count'] = past_shows_count
+    data['upcoming_shows_count'] = upcoming_shows_count
+    data['past_shows'] = past
+    data['upcoming_shows'] = upcoming
+    
   except:
     err = True
     flash('Error unknown venue')
@@ -189,11 +216,9 @@ def create_venue_submission():
       venue.seeking_talent = True
     else:
       venue.seeking_talent = False
-    venue.seeking_description = request.form['seeking_description']
-    venue.past_shows_count = 0
-    venue.upcoming_shows_count = 0
-    db.session.add(venue)
-    db.session.commit()
+      venue.seeking_description = request.form['seeking_description']
+      db.session.add(venue)
+      db.session.commit()
   except:
     err = True
     db.session.rollback()
@@ -335,7 +360,19 @@ def show_artist(artist_id):
   }
   #data = list(filter(lambda d: d['id'] == artist_id, [data1, data2, data3]))[0]
   #data = list(filter(lambda d: d['id'] == artist_id, Artist.query.all()))[0]
-  data = Artist.query.get(artist_id)
+  artist = Artist.query.get(artist_id)
+  shows = db.session.query(Show).filter_by(artist=artist_id).join(Artist).all()
+  ## need to get show
+  
+
+  data = artist.__dict__
+  past , upcoming = get_past_upcoming_shows(shows)
+  past_shows_count = len(past)
+  upcoming_shows_count = len(upcoming)
+  data['past_shows_count'] = past_shows_count
+  data['upcoming_shows_count'] = upcoming_shows_count
+  data['past_shows'] = past
+  data['upcoming_shows'] = upcoming
   return render_template('pages/show_artist.html', artist=data)
 
 #  Update

@@ -113,11 +113,11 @@ app.jinja_env.filters['datetime'] = format_datetime
 
 # 
 def get_past_upcoming_shows(shows_list, format='%Y-%m-%d %H:%M:%S'):
-  now = datetime.now()
+  now = datetime.datetime.now()
   upcoming = []
   past = []
-  for s in shows:
-    dt = datetime.strptime(s.start_time, format)
+  for s in shows_list:
+    dt = datetime.datetime.strptime(s.start_time, format)
     if dt < now:
       past.append(s)
     else:
@@ -139,8 +139,24 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
+  data = []
+  try:
+    # get the distinct areas (state,city) of Venues
+    areas = db.session.query(Venue.state, Venue.city).distinct(Venue.state, Venue.city).all()
 
-  data = Venue.query.all()
+    for area in areas:
+      area_dict = {}
+      state, city = area
+      venues_in_area = Venue.query.filter_by(state=state, city=city).all()
+      area_dict['state'] = state
+      area_dict['city'] = city
+      area_dict['venues'] = venues_in_area
+      data.append(area_dict)
+
+
+  except:
+    print(sys.exc_info())
+
   return render_template('pages/venues.html', areas=data)
 
 @app.route('/venues/search', methods=['POST'])
@@ -158,6 +174,7 @@ def search_venues():
 
   response['count'] = count
   response['data'] = venues
+
 
   return render_template('pages/search_venues.html', results=response, search_term=search_term)
 
@@ -182,6 +199,8 @@ def show_venue(venue_id):
     err = True
     flash('Error unknown venue')
     data = []
+    print(sys.exc_info())
+    
 
   return render_template('pages/show_venue.html', venue=data)
 
@@ -416,7 +435,7 @@ def edit_artist_submission(artist_id):
   except:
     err = True
     db.session.rollback()
-    print(sys)
+    print(sys.exc_info())
   finally:
     db.session.close()
 

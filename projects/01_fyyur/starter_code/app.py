@@ -39,11 +39,20 @@ migrate = Migrate(app, db, compare_type=True)
 #----------------------------------------------------------------------------#
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
+# Show can be implemented as a class
 Show = db.Table('Show', \
 db.Column('id', db.Integer, primary_key=True), \
 db.Column('artist', db.Integer, db.ForeignKey('Artist.id'), nullable=False),\
 db.Column('venue', db.Integer, db.ForeignKey('Venue.id'), nullable=False), \
 db.Column('start_time', db.String))
+
+# class Show(db.Model):
+#   __tablename__='Show'
+#   id = db.Column( db.Integer, primary_key=True)
+#   artist = db.Column( db.Integer, db.ForeignKey('Artist.id'), nullable=False)
+#   venue = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
+#   start_time = db.Column(db.String, nullable=False)
+
 
 #changed start_time from a datetime column to string column so it can work with the included date filter
 
@@ -199,6 +208,10 @@ def show_venue(venue_id):
     data['upcoming_shows_count'] = upcoming_shows_count
     data['past_shows'] = past
     data['upcoming_shows'] = upcoming
+    genres = data['genres']
+    genres = genres[1: len(genres)-1]
+    genres = genres.split(',')
+    data['genres'] = genres
     
   except:
     err = True
@@ -324,6 +337,15 @@ def show_artist(artist_id):
   data['upcoming_shows_count'] = upcoming_shows_count
   data['past_shows'] = past
   data['upcoming_shows'] = upcoming
+  print(data['genres'])
+  try:
+    genres = data['genres']
+    genres = genres[1: len(genres)-1]
+    genres = genres.split(',')
+    data['genres'] = genres
+  except:
+    print(sys.exc_info())
+
   return render_template('pages/show_artist.html', artist=data)
 
 #  Update

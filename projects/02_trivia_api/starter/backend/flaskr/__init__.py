@@ -3,6 +3,7 @@ from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
+import sys
 
 from models import setup_db, Question, Category, db
 
@@ -17,7 +18,7 @@ def create_app(test_config=None):
   '''
   @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
   '''
-  CORS(app, resources={r"/*": {'origins': '*'}})
+  CORS(app, resources={r"localhost:5000/*": {'origins': '*'}})
 
   '''
   @TODO: Use the after_request decorator to set Access-Control-Allow
@@ -26,6 +27,8 @@ def create_app(test_config=None):
   def after_request(response):
     response.headers.add('Acces-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, DELETE')
+    response.headers.add('Access-Control-Allow-Origin', '*')
+
     return response
     
 
@@ -84,14 +87,19 @@ def create_app(test_config=None):
     
     # if a page number is out range  paginate_questions it will abort to 404
     questions = paginate_questions(page)
-    formated_questions = [question.format() for question in questions]    
+    formatted_questions = [question.format() for question in questions]    
 
     questions_count = Question.query.count()
-    
+    categories = [Category.query.get(q['category']) for q in formatted_questions]
+    categories = [q['category'] for q in formatted_questions]
+
+    #categories = [c.format() for c in categories]
     return jsonify({
       'success': True,
-      'questions': formated_questions,
-      'total_questions': questions_count
+      'questions': formatted_questions,
+      'total_questions': questions_count,
+      'categories': categories,
+      'current_category': 'Science'
     })
 
     @app.route('questions/<int: question_id>')
@@ -126,6 +134,28 @@ def create_app(test_config=None):
         'id': question_id
       })
 
+  @app.route('/categories/<category_id>/questions', methods=['GET'])
+  def get_category_questions(category_id):
+    '''
+    This endpoints is responsible for handling get requests on the given route.
+    The response is a json object including the success, list of formatted questions,
+    total_questions which is the count of the questions, and the category of queried question.
+    In case of an error it responds with 404
+    '''
+    try:
+      questions = Question.query.filter_by(category=category_id).all()
+      total_questions = len(questions)
+      questions = [q.format() for q in questions]
+    except Exception as e:
+      print(e)
+      abort(404)
+
+    return jsonify({
+      'success': True,
+      'questions': questions,
+      'current_category': category_id,
+      'total_questions': total_questions
+    })
   '''
   @TODO: 
   Create an endpoint to POST a new question, 

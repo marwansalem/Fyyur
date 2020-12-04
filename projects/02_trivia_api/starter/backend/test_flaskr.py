@@ -109,7 +109,14 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['categories'], [])
         self.assertIsInstance(data['categories'], list)
 
-        
+        def test_get_categories_unallowed_method(self):
+            pass
+
+        def test_get_questions_table_populated(self):
+            pass
+
+        def test_get_questions_table_empty(self):
+            pass
         
 
 # Make the tests conveniently executable

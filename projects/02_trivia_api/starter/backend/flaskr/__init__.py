@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
 
-from models import setup_db, Question, Category
+from models import setup_db, Question, Category, db
 
 QUESTIONS_PER_PAGE = 10
 
@@ -12,42 +12,119 @@ def create_app(test_config=None):
   # create and configure the app
   app = Flask(__name__)
   setup_db(app)
+
   
   '''
   @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
   '''
+  CORS(app, resources={r"/*": {'origins': '*'}})
 
   '''
   @TODO: Use the after_request decorator to set Access-Control-Allow
   '''
+  @app.after_request
+  def after_request(response):
+    response.headers.add('Acces-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, DELETE')
+    return response
+    
 
-  '''
-  @TODO: 
-  Create an endpoint to handle GET requests 
-  for all available categories.
-  '''
+  @app.route('/categories', methods=['GET'])
+  def get_categories():
+    '''
+    @TODO: 
+    Create an endpoint to handle GET requests 
+    for all available categories.
+    '''
+    all_categories= Category.query.all()
+    all_categories = [category.format() for category in all_categories]
+    return jsonify({
+      'success': True,
+      'categories': all_categories,
+      'count': len(all_categories)
+    }) 
 
 
-  '''
-  @TODO: 
-  Create an endpoint to handle GET requests for questions, 
-  including pagination (every 10 questions). 
-  This endpoint should return a list of questions, 
-  number of total questions, current category, categories. 
+  def paginate_questions(page):
+    page_start = (page - 1) * QUESTIONS_PER_PAGE
+    page_end = page + QUESTIONS_PER_PAGE
+    questions = Question.query.all()
+    questions_count = len(questions)
+    page_questions = []
+    try:
+      # Handle case if the last page has less than 10 questions
+      # no need for the 'Anded' condition but added as further explanation
+      if page_end > questions_count and page_start < questions_count:
+        page_end = questions_count
+      
+      # if page_start >= questions_count this will cause an exception
+      page_questions = questions[page_start: page_end]
+    except:
+      # An exception will be caught if the page number is out of bounds
+      abort(404)
 
-  TEST: At this point, when you start the application
-  you should see questions and categories generated,
-  ten questions per page and pagination at the bottom of the screen for three pages.
-  Clicking on the page numbers should update the questions. 
-  '''
+    return page_questions
 
-  '''
-  @TODO: 
-  Create an endpoint to DELETE question using a question ID. 
+  @app.route('/questions', methods=['GET'])
+  def get_questions():
+    '''
+    @TODO: 
+    Create an endpoint to handle GET requests for questions, 
+    including pagination (every 10 questions). 
+    This endpoint should return a list of questions, 
+    number of total questions, current category, categories. 
 
-  TEST: When you click the trash icon next to a question, the question will be removed.
-  This removal will persist in the database and when you refresh the page. 
-  '''
+    TEST: At this point, when you start the application
+    you should see questions and categories generated,
+    ten questions per page and pagination at the bottom of the screen for three pages.
+    Clicking on the page numbers should update the questions. 
+    '''
+    # get a page number if any from request
+    page = request.args.get('page', 1, type=int)
+    
+    # if a page number is out range  paginate_questions it will abort to 404
+    questions = paginate_questions(page)
+    formated_questions = [question.format() for question in questions]    
+
+    questions_count = Question.query.count()
+
+    return jsonify({
+      'success': True,
+      'questions': formated_questions,
+      'total_questions': questions_count
+    })
+
+    @app.route('questions/<int: question_id>')
+    def delete_question(question_id):
+      '''
+      @TODO: 
+      Create an endpoint to DELETE question using a question ID. 
+
+      TEST: When you click the trash icon next to a question, the question will be removed.
+      This removal will persist in the database and when you refresh the page. 
+      '''
+      not_found = False
+      try:
+        question_to_delete = Question.query.get(question_id)
+        if question_to_delete is None:
+          not_found = True
+        
+        question_to_delete.delete()
+        
+      except:
+        db.session.rollback()
+        db.session.close()
+        if not_found:
+          abort(404)
+        else:
+          # TODO
+          ## handle some error in case of a fail to commit
+          pass
+      
+      return jsonify({
+        'success': True,
+        'id': question_id
+      })
 
   '''
   @TODO: 
@@ -98,7 +175,22 @@ def create_app(test_config=None):
   Create error handlers for all expected errors 
   including 404 and 422. 
   '''
+
+  @app.errorhandler(404)
+  def not_found(error):
+    return jsonify({
+      'success': False,
+      'error': 404,
+      'message': 'Not Found'
+    }), 404
   
+  @app.errorhandler(422)
+  def cannot_be_processed(error):
+    return jsonify({
+      'success': False,
+      'error': 422,
+      'message': 'Unprocessable'
+    }), 422
   return app
 
     

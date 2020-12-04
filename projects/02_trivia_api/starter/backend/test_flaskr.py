@@ -14,8 +14,11 @@ class TriviaTestCase(unittest.TestCase):
         """Define test variables and initialize app."""
         self.app = create_app()
         self.client = self.app.test_client
-        self.database_name = "trivia_test"
-        self.database_path = "postgres://{}/{}".format('localhost:5432', self.database_name)
+        self.DB_USER = os.getenv('DB_USER', 'postgres')
+        self.DB_NAME = os.getenv('DB_NAME', 'trivia') 
+        #TODO should I use a different database for testing?
+        self.DB_PASSWORD = os.getenv('DB_PASSWORD', '1234') 
+        self.database_path = f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@localhost:5432/{self.DB_NAME}"
         setup_db(self.app, self.database_path)
 
         # binds the app to the current context

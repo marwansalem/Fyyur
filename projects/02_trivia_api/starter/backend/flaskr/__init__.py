@@ -47,20 +47,20 @@ def create_app(test_config=None):
 
   def paginate_questions(page):
     page_start = (page - 1) * QUESTIONS_PER_PAGE
-    page_end = page + QUESTIONS_PER_PAGE
+    page_end = page_start + QUESTIONS_PER_PAGE
     questions = Question.query.all()
     questions_count = len(questions)
     page_questions = []
-    try:
-      # Handle case if the last page has less than 10 questions
-      # no need for the 'Anded' condition but added as further explanation
-      if page_end > questions_count and page_start < questions_count:
+    
+    # Handle case if the last page has less than 10 questions
+    # no need for the 'Anded' condition but added as further explanation
+    if page_end > questions_count and page_start < questions_count:
         page_end = questions_count
-      
-      # if page_start >= questions_count this will cause an exception
-      page_questions = questions[page_start: page_end]
-    except:
-      # An exception will be caught if the page number is out of bounds
+
+    page_questions = questions[page_start: page_end]
+    # if page_start and page_end are out of range the page_question will be an empty list
+    # and it's length will be 0
+    if len(page_questions) == 0:
       abort(404)
 
     return page_questions
@@ -87,7 +87,7 @@ def create_app(test_config=None):
     formated_questions = [question.format() for question in questions]    
 
     questions_count = Question.query.count()
-
+    
     return jsonify({
       'success': True,
       'questions': formated_questions,

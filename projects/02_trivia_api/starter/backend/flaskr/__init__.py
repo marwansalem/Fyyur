@@ -113,7 +113,7 @@ def create_app(test_config=None):
     
     categories = {}
     # create a dictionary (map) with keys as the category id, and values as the category type
-    
+
     for q in formatted_questions:
       categories[q['category']] = Category.query.get(q['category']).type
     return jsonify({
@@ -199,8 +199,8 @@ def create_app(test_config=None):
       'id': new_question.id
     })
 
-  @app.route('/categories/<id>/search', methods=['POST'])
-  def search_questions(id):
+  @app.route('/questions/search', methods=['POST'])
+  def search_questions():
     '''
     @TODO: 
     Create a POST endpoint to get questions based on a search term. 
@@ -212,8 +212,20 @@ def create_app(test_config=None):
     Try using the word "title" to start. 
     '''
     body = request.get_json()
-    #
+    print(body)
+    if 'searchTerm' not in body:
+      ## bad request because searchTerm not present
+      abort(400)
+    
+    search_term = body.get('searchTerm')
 
+    questions = Question.query.filter(Question.question.ilike(f'%{search_term}%')).all()
+    questions = [q.format() for q in questions]
+    return jsonify({
+      'questions': questions,
+      'total_question': len(questions),
+      'current_category': None
+    })
 
   @app.route('/categories/<category_id>/questions', methods=['GET'])
   def get_category_questions(category_id):

@@ -41,10 +41,13 @@ def create_app(test_config=None):
     '''
     print(Category.query.all())
     all_categories= Category.query.all()
-    all_categories = [category.format() for category in all_categories]
+    categories = {}
+    for category in all_categories:
+      categories[category.id] = category.type
+
     return jsonify({
       'success': True,
-      'categories': all_categories,
+      'categories': categories,
       'count': len(all_categories)
     }) 
 
@@ -91,9 +94,15 @@ def create_app(test_config=None):
     questions, page_empty = paginate_questions(page, Question.query.all())
     ## if the length of requested page is 0, then page_empty will be True
     if page_empty:
-      print('aborting')
       # should I abort or return an empty list?
-      abort(404)
+      return jsonify({
+      'success': True,
+      'questions': [],
+      'total_questions': Questions.query.count(),
+      'categories': {},
+      'current_category': None
+      })
+      
     formatted_questions = [question.format() for question in questions]    
 
     questions_count = Question.query.count()
@@ -124,37 +133,37 @@ def create_app(test_config=None):
       'current_category': None
     })
 
-    @app.route('questions/<int: question_id>')
-    def delete_question(question_id):
-      '''
-      @TODO: 
-      Create an endpoint to DELETE question using a question ID. 
+  @app.route('questions/<int: question_id>')
+  def delete_question(question_id):
+    '''
+    @TODO: 
+    Create an endpoint to DELETE question using a question ID. 
 
-      TEST: When you click the trash icon next to a question, the question will be removed.
-      This removal will persist in the database and when you refresh the page. 
-      '''
-      question_not_found = False
-      try:
-        question_to_delete = Question.query.get(question_id)
-        if question_to_delete is None:
-          question_not_found = True
-        
-        question_to_delete.delete()
-        
-      except:
-        db.session.rollback()
-        db.session.close()
-        if question_not_found:
-          abort(404)
-        else:
-          ## handle some error in case of a fail to commit
-          abort(500)
-          #todo add some logging
+    TEST: When you click the trash icon next to a question, the question will be removed.
+    This removal will persist in the database and when you refresh the page. 
+    '''
+    question_not_found = False
+    try:
+      question_to_delete = Question.query.get(question_id)
+      if question_to_delete is None:
+        question_not_found = True
       
-      return jsonify({
-        'success': True,
-        'id': question_id
-      })
+      question_to_delete.delete()
+      
+    except:
+      db.session.rollback()
+      db.session.close()
+      if question_not_found:
+        abort(404)
+      else:
+        ## handle some error in case of a fail to commit
+        abort(500)
+        #todo add some logging
+    
+    return jsonify({
+      'success': True,
+      'id': question_id
+    })
 
 
   @app.route('/questions', methods=['POST'])

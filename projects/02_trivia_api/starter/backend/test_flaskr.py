@@ -68,18 +68,15 @@ class TriviaTestCase(unittest.TestCase):
         
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
-        # assert it is not an empty list
-        self.assertTrue(data['categories'])
-        self.assertIsInstance(data['categories'], list)
+        self.assertTrue(data['categories'])# if the dict is empty assertion will fail
+        self.assertIsInstance(data['categories'], dict)
         self.assertEqual(data['count'], count)
 
 
         # make sure that each category in the query has all attributes
-        for categ in data['categories']:
-            self.assertTrue(categ['id'])
-            self.assertIsInstance(categ['id'], int)
-            self.assertTrue(categ['type'])
-            self.assertIsInstance(categ['type'], str)
+        for id in data['categories']:
+            self.assertIsInstance(id, str)
+            self.assertIsInstance(data['categories'][id], str)
 
     def test_get_categories_table_empty(self):
         '''
@@ -106,17 +103,17 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
         self.assertEqual(data['count'], 0)
-        self.assertEqual(data['categories'], [])
-        self.assertIsInstance(data['categories'], list)
+        self.assertEqual(data['categories'], {})
+        self.assertIsInstance(data['categories'], dict)
 
-        def test_get_categories_unallowed_method(self):
-            pass
+    def test_get_categories_unallowed_method(self):
+        pass
 
-        def test_get_questions_table_populated(self):
-            pass
+    def test_get_questions_table_populated(self):
+        pass
 
-        def test_get_questions_table_empty(self):
-            pass
+    def test_get_questions_table_empty(self):
+        pass
         
 
 # Make the tests conveniently executable

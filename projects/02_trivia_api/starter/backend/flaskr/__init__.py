@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 from flask_cors import CORS
 import random
 import sys
@@ -18,16 +19,20 @@ def create_app(test_config=None):
   '''
   @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
   '''
-  CORS(app, resources={r"localhost:5000/*": {'origins': '*'}})
+  CORS(app, resources={r"*": {'origins': '*'}}, allow_headers='*')
 
   '''
   @TODO: Use the after_request decorator to set Access-Control-Allow
   '''
   @app.after_request
   def after_request(response):
-    response.headers.add('Acces-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Origin', '*')
+    #response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+    #response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+    response.headers.add('Acces-Control-Allow-Headers', 'content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+    # added allow-credentials because i got an error in console when trying to access quiz
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+
 
     return response
     
@@ -39,7 +44,6 @@ def create_app(test_config=None):
     Create an endpoint to handle GET requests 
     for all available categories.
     '''
-    print(Category.query.all())
     all_categories= Category.query.all()
     categories = {}
     for category in all_categories:
@@ -98,7 +102,7 @@ def create_app(test_config=None):
       return jsonify({
       'success': True,
       'questions': [],
-      'total_questions': Questions.query.count(),
+      'total_questions': Question.query.count(),
       'categories': {},
       'current_category': None
       })
@@ -133,7 +137,7 @@ def create_app(test_config=None):
       'current_category': None
     })
 
-  @app.route('questions/<int: question_id>')
+  @app.route('/questions/<int:question_id>', methods=['DELETE'])
   def delete_question(question_id):
     '''
     @TODO: 
@@ -271,19 +275,83 @@ def create_app(test_config=None):
       'total_questions': total_questions
     })
 
+  def check_out_of_unique_questions(previous_questions, quiz_category):
+    category_id = quiz_category['id']
+    questions_in_category_count = Question.query.filter_by(category=category_id).count()
+    #previous_questions_with_current_category_count = 0
+    counter = questions_in_category_count
+    out_of_questions = False
+    for q in previous_questions:
+      if q.category == category_id:
+        counter -= 1
+        if counter < 0:
+          out_of_questions = True
+          break
+    return out_of_questions
 
+  def pick_random_category():
+    category_count = Category.query.count()
+    quiz_category = Category.query.order_by(func.random()).first()
+    return quiz_category
 
-  '''
-  @TODO: 
-  Create a POST endpoint to get questions to play the quiz. 
-  This endpoint should take category and previous question parameters 
-  and return a random questions within the given category, 
-  if provided, and that is not one of the previous questions. 
+  @app.route('/quiz', methods=['POST'])
+  def quiz():
+    '''
+    @TODO: 
+    Create a POST endpoint to get questions to play the quiz. 
+    This endpoint should take category and previous question parameters 
+    and return a random questions within the given category, 
+    if provided, and that is not one of the previous questions. 
 
-  TEST: In the "Play" tab, after a user selects "All" or a category,
-  one question at a time is displayed, the user is allowed to answer
-  and shown whether they were correct or not. 
-  '''
+    TEST: In the "Play" tab, after a user selects "All" or a category,
+    one question at a time is displayed, the user is allowed to answer
+    and shown whether they were correct or not. 
+    '''
+    body = request.get_json()
+    print(body)
+    try:
+      previous_questions = body['previous_questions']
+      quiz_category = body['quiz_category']
+    except KeyError:
+      #the required fields are not present in the dictionary
+      abort(400)
+
+    if 'type' not in quiz_category or 'id' not in quiz_category:
+      abort(400)
+    
+    try:
+      #if all categories is selected
+      #then quiz_category= {'type': 'click', 'id': 0}}
+      if quiz_category['type'] == 'click':
+        quiz_category = pick_random_category().format()
+      #random_question
+
+      out_of_questions = check_out_of_unique_questions(previous_questions, quiz_category)
+      # if i am out of questions, i will repeat one of the previous questions
+      # until i am specified otherwise
+      category_id = quiz_category['id']
+      
+      if out_of_questions:
+        new_question = Question.query.filter_by(category=category_id).first()
+      else:
+        while True:
+          new_question = Question.query.filter_by(category=category_id).order_by(func.random()).first()
+          if new_question not in previous_questions:
+            break
+      new_question = new_question.format()
+      
+      previous_questions.append(new_question)
+      
+    except Exception as e:
+      print(e)
+      abort(400)
+
+    return jsonify({
+      'success': True,
+      'quiz_category': quiz_category,
+      'previous_questions': previous_questions,
+      'current_question': new_question
+    })
 
   '''
   @TODO: 

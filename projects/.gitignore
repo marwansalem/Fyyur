@@ -11,3 +11,8 @@ venv
 .Trashes
 ehthumbs.db
 Thumbs.db
+01_fyyur/starter_code/node_modules
+01_fyyur/starter_code/env
+01_fyyur/starter_code/package-lock.json
+01_fyyur/starter_code/package.json
+01_fyyur/starter_code/run.bat

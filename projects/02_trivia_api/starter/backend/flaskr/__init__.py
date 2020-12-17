@@ -225,7 +225,6 @@ def create_app(test_config=None):
     Try using the word "title" to start. 
     '''
     body = request.get_json()
-    print(body)
     if 'searchTerm' not in body:
       ## bad request because searchTerm not present
       abort(400)
@@ -282,11 +281,13 @@ def create_app(test_config=None):
     counter = questions_in_category_count
     out_of_questions = False
     for q in previous_questions:
-      if q.category == category_id:
+      if Question.query.get(q).category == int(category_id):
         counter -= 1
-        if counter < 0:
+        if counter == 0:
           out_of_questions = True
           break
+    if counter <= 0:
+        out_of_questions = True
     return out_of_questions
 
   def pick_random_category():
@@ -295,7 +296,7 @@ def create_app(test_config=None):
     return quiz_category
 
   @app.route('/quiz', methods=['POST'])
-  def quiz():
+  def quiz_next_question():
     '''
     @TODO: 
     Create a POST endpoint to get questions to play the quiz. 
@@ -308,7 +309,7 @@ def create_app(test_config=None):
     and shown whether they were correct or not. 
     '''
     body = request.get_json()
-    print(body)
+
     try:
       previous_questions = body['previous_questions']
       quiz_category = body['quiz_category']
@@ -319,6 +320,7 @@ def create_app(test_config=None):
     if 'type' not in quiz_category or 'id' not in quiz_category:
       abort(400)
     
+    #try:
     try:
       #if all categories is selected
       #then quiz_category= {'type': 'click', 'id': 0}}
@@ -333,24 +335,27 @@ def create_app(test_config=None):
       
       if out_of_questions:
         new_question = Question.query.filter_by(category=category_id).first()
+        # or maybe send no question and indicate it is ended
+        return jsonify({
+          'success': True,
+          'question': None
+        })
       else:
         while True:
           new_question = Question.query.filter_by(category=category_id).order_by(func.random()).first()
-          if new_question not in previous_questions:
+          if new_question.id not in previous_questions:
             break
       new_question = new_question.format()
-      
-      previous_questions.append(new_question)
-      
+
+
     except Exception as e:
-      print(e)
+      print(sys.exc_info())
       abort(400)
 
     return jsonify({
       'success': True,
       'quiz_category': quiz_category,
-      'previous_questions': previous_questions,
-      'current_question': new_question
+      'question': new_question
     })
 
   '''

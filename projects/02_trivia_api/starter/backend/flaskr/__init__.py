@@ -48,11 +48,10 @@ def create_app(test_config=None):
     categories = {}
     for category in all_categories:
       categories[category.id] = category.type
-
     return jsonify({
       'success': True,
       'categories': categories,
-      'count': len(all_categories)
+      'count': len(categories)
     }) 
 
 
@@ -110,25 +109,13 @@ def create_app(test_config=None):
     formatted_questions = [question.format() for question in questions]    
 
     questions_count = Question.query.count()
-    categories = []
-    category_set = set()
-    
-    # for q in formatted_questions:
-    #   cat = Category.query.get(q['category'])
-    #   if (cat.id in category_set) is False:
-    #     category_set.add(cat.id)
-    #     categories.append(cat.type)
-    #categories = [Category.query.get(q['category']).type for q in formatted_questions]
-    #for cc in categories:
-    #  print(cc, Category.query.filter_by(type=cc).first().id)
-    #categories = Category.query.filter(Category.type in [ Category.query.get(q['category']).type for q in formatted_questions] )
-    
-    
+  
     categories = {}
+    all_categories = Category.query.all()
     # create a dictionary (map) with keys as the category id, and values as the category type
+    for cat in all_categories:
+      categories[cat.id] = cat.type
 
-    for q in formatted_questions:
-      categories[q['category']] = Category.query.get(q['category']).type
     return jsonify({
       'success': True,
       'questions': formatted_questions,
@@ -334,13 +321,14 @@ def create_app(test_config=None):
       category_id = quiz_category['id']
       
       if out_of_questions:
-        new_question = Question.query.filter_by(category=category_id).first()
-        # or maybe send no question and indicate it is ended
+        # send no question and indicate that the quiz has ended
         return jsonify({
           'success': True,
           'question': None
         })
       else:
+        # i believe this loop takes some time and picking a non repeated question
+        # could be done more efficiently
         while True:
           new_question = Question.query.filter_by(category=category_id).order_by(func.random()).first()
           if new_question.id not in previous_questions:

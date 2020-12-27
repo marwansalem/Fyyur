@@ -107,13 +107,45 @@ class TriviaTestCase(unittest.TestCase):
         self.assertIsInstance(data['categories'], dict)
 
     def test_get_categories_unallowed_method(self):
-        pass
+        res = self.client().post('/categories')
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 405)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'Method Not Allowed')
+        self.assertEqual(data['error'], 405)
 
     def test_get_questions_table_populated(self):
         pass
 
     def test_get_questions_table_empty(self):
         pass
+
+    def test_post_question(self):
+        res = self.client().post('questions', json={
+            'question':'How long is a day?',
+            'answer':'24 hours',
+            'difficulty':1,
+            'category':'1'}
+            )
+
+        data = json.loads(res.data)
+        print(data)
+        id = data['id']
+        self.assertEqual(data['sucess'], True)
+
+        question = Question.query.get(id)
+
+        self.assertTrue(question)
+        self.assertEqual(question.question, 'How long is a day?')
+        self.assertEqual(question.answer, '24 hours')
+        self.assertEqual(question.difficulty, '1')
+        self.assertEqual(question.category, '2')
+        question.delete()
+
+        
+
+
+
         
 
 # Make the tests conveniently executable

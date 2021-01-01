@@ -95,3 +95,7 @@ class Category(db.Model):
 
     def format(self):
         return {"id": self.id, "type": self.type}
+    
+    def copy(self):
+        copy = Category(self.type)
+        return copy

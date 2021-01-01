@@ -168,7 +168,6 @@ def create_app(test_config=None):
         """
         body = request.get_json()
         try:
-            print(body)
             question = body["question"]
             answer = body["answer"]
             difficulty = body["difficulty"]
@@ -179,12 +178,13 @@ def create_app(test_config=None):
             abort(400)
 
         try:
-            new_question = Question(question, answer, difficulty, category)
+            new_question = Question(question, answer, category, difficulty)
             new_question.insert()
             id = new_question.id
 
         except:
             # failure to commit
+            print(sys.exc_info())
             db.session.rollback()
             db.session.close()
             abort(500)
@@ -192,7 +192,7 @@ def create_app(test_config=None):
         # the try, except blocks will abort in case of an error
         # if there are no errors
 
-        return jsonify({"success": "True", "id": new_question.id})
+        return jsonify({"success": True, "id": new_question.id})
 
     @app.route("/questions/search", methods=["POST"])
     def search_questions():
@@ -211,11 +211,11 @@ def create_app(test_config=None):
 
         if body is None:
             abort(400)
-        if "searchTerm" not in body:
+        if 'searchTerm' not in body:
             ## bad request because searchTerm not present
             abort(400)
 
-        search_term = body.get("searchTerm")
+        search_term = body.get('searchTerm')
 
         questions = Question.query.filter(
             Question.question.ilike(f"%{search_term}%")

@@ -88,7 +88,7 @@ class TriviaTestCase(unittest.TestCase):
         in case the assertions fail.
         '''
         categories_copy = Category.query.all()
-        #emot
+        categories = [categ.copy() for categ in categories_copy]
         for categ in categories_copy:
             categ.delete()
 
@@ -96,7 +96,7 @@ class TriviaTestCase(unittest.TestCase):
         data = json.loads(res.data)
         count = Category.query.count()
 
-        for categ in categories_copy:
+        for categ in categories:
             categ.insert()
 
         
@@ -121,26 +121,98 @@ class TriviaTestCase(unittest.TestCase):
         pass
 
     def test_post_question(self):
-        res = self.client().post('questions', json={
+        some_category_types = ['Art', 'Science', 'Language']
+        categories = [Category(cat_type) for cat_type in some_category_types]
+        for cat in categories:
+            cat.insert()
+
+        cat_id = Category.query.first().id
+        res = self.client().post('/questions', json={
             'question':'How long is a day?',
             'answer':'24 hours',
             'difficulty':1,
-            'category':'1'}
+            'category':cat_id
+            }
             )
 
         data = json.loads(res.data)
-        print(data)
         id = data['id']
-        self.assertEqual(data['sucess'], True)
+        self.assertEqual(data['success'], True)
 
         question = Question.query.get(id)
 
         self.assertTrue(question)
         self.assertEqual(question.question, 'How long is a day?')
         self.assertEqual(question.answer, '24 hours')
-        self.assertEqual(question.difficulty, '1')
-        self.assertEqual(question.category, '2')
+        self.assertEqual(question.difficulty, 1)
+        self.assertEqual(question.category, cat_id)
         question.delete()
+
+    def test_search_question(self):
+        #Create a category so it can be referenced by newly inserted questions
+        cat = Category('Mystery')
+        cat.insert()
+        #prepare Question attributes
+        answer= "yes"
+        diff = 0
+        #prepare a question that should not be in the result
+        not_a_target = Question('Will I be found using the chosen search term?', 'No', cat.id, diff).format()
+        #prepare questions that are to be expected in the result
+        question_strings =['can you this find that?', 'where is THIS?', 'who is tHiS']
+        target_questions = [Question(s, answer, cat.id, diff) for s in question_strings]
+
+        for q in target_questions:
+            q.insert()
+        expected_res = [q.format() for q in target_questions]
+        term = "this"
+        res = self.client().post('/questions/search', json={
+            'searchTerm':term
+            }
+            )
+        data = json.loads(res.data)
+        try:
+            result_questions = data['questions']
+            count = data['total_questions']
+            self.assertTrue(result_questions)
+            self.assertEqual(count, len(expected_res))
+
+            # assert that resulst are the same as the created questions
+            for res_question in result_questions:
+                self.assertTrue(res_question in expected_res)
+
+            # assert that the question that does not include the search term is not in the result
+            self.assertFalse(not_a_target in result_questions)
+
+            
+        except:
+            for q in target_questions:
+                q.delete()
+
+    def test_delete_question_exists(self):
+        # create a new question to be used for the test
+        # create a category for it so as not to violate category FK constraint
+        cat = Category('Mystery')
+        cat.insert()
+        diff = 9000
+        question_to_delete = Question('Can we be funny while coding?', 'No', cat.id, 0)
+        
+        question_to_delete.insert()
+        question_id = question_to_delete.id
+
+        res = self.client().delete(f'/questions/{question_id}')
+
+        data = json.loads(res.data)
+        
+        res_status = data.get('success', None)
+        res_id =  data.get('id', None)
+        self.assertIsNotNone(res_status)
+        self.assertIsNotNone(res_id)
+
+        self.assertTrue(res_status)
+        self.assertEqual(question_id, res_id)
+        self.assertIsNone(Question.query.get(question_id))
+    
+
 
         
 
